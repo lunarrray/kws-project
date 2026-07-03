@@ -1,0 +1,7 @@
+venv/
+.venv/
+.env
+data/
+kws_dataset/
+__pycache__/
+*.parquet

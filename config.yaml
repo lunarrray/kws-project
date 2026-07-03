@@ -1,0 +1,53 @@
+# =============================================================================
+# Akylai KWS — feature-extraction config (DRAFT)
+# Drives utils/feature_extractor.py.  Run:  make dataset   (or)
+#   python -m utils.feature_extractor --config config.yaml
+# Bring your OWN dataset by editing the `dataset` section below.
+# =============================================================================
+
+# --- Where the RAW AUDIO comes from ------------------------------------------
+dataset:
+  source: hf                       # "hf" (Hugging Face Hub) | "local" (save_to_disk dir)
+  repo_or_path: aiacademy-kg/kws-raw   # HF repo id  OR  local path to a save_to_disk dataset
+  name: null                       # optional HF config name
+  split: train                     # which split to read
+  audio_col: audio                 # column holding the audio (HF Audio / {bytes,path} / file path)
+  keep_cols:                       # source columns copied verbatim into the output (NOT features)
+    - label
+    - source
+
+# --- DSP front-end (MUST match training & inference!) ------------------------
+frontend:
+  sample_rate: 16000               # Hz; audio is resampled to this
+  n_fft: 512                       # STFT window (~32 ms @ 16 kHz)
+  hop_length: 160                  # STFT hop (~10 ms @ 16 kHz)
+  n_mfcc: 20                       # number of MFCC coefficients
+  n_mels: 40                       # mel filter-bank channels
+  fmin: 0                          # lowest mel frequency, Hz
+  fmax: null                       # highest mel frequency, Hz (null -> Nyquist)
+  aggregate: [mean, std]           # per-channel time aggregation (also: min, max)
+  groups:                          # which feature groups to compute (order is preserved)
+    - mfcc                         #   cepstral envelope
+    - delta                        #   Δ MFCC (velocity)
+    - delta2                       #   ΔΔ MFCC (acceleration)
+    - mel                          #   log-mel energies (dB)
+    - contrast                     #   spectral contrast (7 bands)
+    - chroma                       #   pitch-class energy (12)
+    - centroid                     #   spectral brightness
+    - bandwidth                    #   spectral spread
+    - rolloff                      #   85% roll-off frequency
+    - flatness                     #   tonality vs noisiness
+    - zcr                          #   zero-crossing rate
+    - rms                          #   loudness envelope
+
+# --- Where the RESULT is written ---------------------------------------------
+output:
+  sink: local                      # "local" (parquet file) | "hf" (push_to_hub)
+  path: features.parquet           # used when sink == local
+  hf_repo: aiacademy-kg/kws-dataset  # used when sink == hf
+  private: false                   # visibility of the pushed Hub dataset
+
+# --- Parallelism (tune to your machine) --------------------------------------
+processing:
+  n_jobs: 6                        # parallel worker processes
+  chunk_size: 1000                 # clips per worker task
